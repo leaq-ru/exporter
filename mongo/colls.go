@@ -1,8 +1,6 @@
 package mongo
 
 const (
-	CollInvoice  = "invoices"
-	CollBalance  = "balances"
-	CollCounter  = "counters"
+	CollFile     = "files"
 	CollEventLog = "event_logs"
 )

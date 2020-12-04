@@ -20,7 +20,6 @@ type mongodb struct {
 
 type service struct {
 	Parser string `envconfig:"SERVICE_PARSER"`
-	User   string `envconfig:"SERVICE_USER"`
 }
 
 type stan struct {

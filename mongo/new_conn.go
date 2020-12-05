@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func NewConn(serviceName string, url string) (db *mongo.Database, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func NewConn(ctx context.Context, serviceName string, url string) (db *mongo.Database, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	conn, err := mongo.Connect(ctx, options.Client().

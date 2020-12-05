@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/nnqq/scr-exporter/call"
 	"github.com/nnqq/scr-exporter/config"
 	"github.com/nnqq/scr-exporter/event_log"
@@ -8,6 +9,7 @@ import (
 	"github.com/nnqq/scr-exporter/exporterimpl"
 	"github.com/nnqq/scr-exporter/file"
 	"github.com/nnqq/scr-exporter/logger"
+	"github.com/nnqq/scr-exporter/minio"
 	"github.com/nnqq/scr-exporter/mongo"
 	"github.com/nnqq/scr-exporter/stan"
 	graceful "github.com/nnqq/scr-lib-graceful"
@@ -22,6 +24,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	cfg, err := config.NewConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -38,12 +42,25 @@ func main() {
 	stanConn, err := stan.NewConn(cfg.ServiceName, cfg.STAN.ClusterID, cfg.NATS.URL)
 	logg.Must(err)
 
-	db, err := mongo.NewConn(cfg.ServiceName, cfg.MongoDB.URL)
+	db, err := mongo.NewConn(ctx, cfg.ServiceName, cfg.MongoDB.URL)
+	logg.Must(err)
+
+	minioClient, err := minio.NewClient(
+		ctx,
+		cfg.S3.AccessKeyID,
+		cfg.S3.SecretAccessKey,
+		cfg.S3.Endpoint,
+		cfg.S3.Region,
+		cfg.S3.ExporterBucketName,
+		cfg.S3.Secure,
+	)
 	logg.Must(err)
 
 	consumer := exporter_async.NewConsumer(
 		logg.ZL,
 		stanConn,
+		minioClient,
+		companyClient,
 		file.NewModel(db),
 		event_log.NewModel(db),
 		db.Client().StartSession,
@@ -56,7 +73,6 @@ func main() {
 	exporter.RegisterExporterServer(grpcSrv, exporterimpl.NewServer(
 		logg.ZL,
 		file.NewModel(db),
-		companyClient,
 		consumer.ProcessAsync,
 		db.Client().StartSession,
 	))

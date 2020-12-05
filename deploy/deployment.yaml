@@ -64,6 +64,36 @@ spec:
                 configMapKeyRef:
                   key: url
                   name: mongodb
+            - name: S3_EXPORTERBUCKETNAME
+              valueFrom:
+                configMapKeyRef:
+                  key: exporterbucketname
+                  name: s3
+            - name: S3_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  key: endpoint
+                  name: s3
+            - name: S3_ACCESSKEYID
+              valueFrom:
+                configMapKeyRef:
+                  key: accesskeyid
+                  name: s3
+            - name: S3_SECRETACCESSKEY
+              valueFrom:
+                secretKeyRef:
+                  key: secretaccesskey
+                  name: s3
+            - name: S3_SECURE
+              valueFrom:
+                configMapKeyRef:
+                  key: secure
+                  name: s3
+            - name: S3_REGION
+              valueFrom:
+                configMapKeyRef:
+                  key: region
+                  name: s3
             - name: STAN_CLUSTERID
               valueFrom:
                 configMapKeyRef:

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (m Model) SetSuccess(ctx context.Context, eventID primitive.ObjectID) (err error) {
+func (m Model) SetSuccess(ctx context.Context, eventID primitive.ObjectID, url string) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -16,6 +16,7 @@ func (m Model) SetSuccess(ctx context.Context, eventID primitive.ObjectID) (err 
 	}, bson.M{
 		"$set": file{
 			Status: status_success,
+			URL:    url,
 		},
 	})
 	return

@@ -4,6 +4,7 @@ type Config struct {
 	ServiceName string
 	Grpc        grpc
 	MongoDB     mongodb
+	S3          s3
 	STAN        stan
 	NATS        nats
 	Service     service
@@ -16,6 +17,15 @@ type grpc struct {
 
 type mongodb struct {
 	URL string `envconfig:"MONGODB_URL"`
+}
+
+type s3 struct {
+	ExporterBucketName string `envconfig:"S3_EXPORTERBUCKETNAME"`
+	Endpoint           string `envconfig:"S3_ENDPOINT"`
+	AccessKeyID        string `envconfig:"S3_ACCESSKEYID"`
+	SecretAccessKey    string `envconfig:"S3_SECRETACCESSKEY"`
+	Secure             string `envconfig:"S3_SECURE"`
+	Region             string `envconfig:"S3_REGION"`
 }
 
 type service struct {

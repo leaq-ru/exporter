@@ -2,15 +2,14 @@ package md
 
 import (
 	"context"
-	"errors"
+	"github.com/nnqq/scr-exporter/safeerr"
 	"google.golang.org/grpc/metadata"
-	"net/http"
 )
 
 func GetUserID(ctx context.Context) (userID string, err error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		err = errors.New(http.StatusText(http.StatusInternalServerError))
+		err = safeerr.InternalServerError
 		return
 	}
 
@@ -20,7 +19,7 @@ func GetUserID(ctx context.Context) (userID string, err error) {
 	}
 
 	if userID == "" {
-		err = errors.New("unauthorized")
+		err = safeerr.Unauthorized
 	}
 	return
 }

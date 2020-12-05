@@ -6,16 +6,16 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type ProcessAsync func(*parser.GetV2Request) error
+type processAsyncMessage struct {
+	ID    primitive.ObjectID     `json:"i"`
+	Query *parser.GetListRequest `json:"q"`
+}
 
-func (c Consumer) ProcessAsync(req *parser.GetV2Request) (err error) {
-	type msg struct {
-		ID    primitive.ObjectID   `json:"i"`
-		Query *parser.GetV2Request `json:"q"`
-	}
+type ProcessAsync func(primitive.ObjectID, *parser.GetListRequest) error
 
-	bytes, err := json.Marshal(msg{
-		ID:    primitive.NewObjectID(),
+func (c Consumer) ProcessAsync(id primitive.ObjectID, req *parser.GetListRequest) (err error) {
+	bytes, err := json.Marshal(processAsyncMessage{
+		ID:    id,
 		Query: req,
 	})
 	if err != nil {

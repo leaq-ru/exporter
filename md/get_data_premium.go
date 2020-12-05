@@ -2,15 +2,14 @@ package md
 
 import (
 	"context"
-	"errors"
+	"github.com/nnqq/scr-exporter/safeerr"
 	"google.golang.org/grpc/metadata"
-	"net/http"
 )
 
 func GetDataPremium(ctx context.Context) (premium bool, err error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		err = errors.New(http.StatusText(http.StatusInternalServerError))
+		err = safeerr.InternalServerError
 		return
 	}
 

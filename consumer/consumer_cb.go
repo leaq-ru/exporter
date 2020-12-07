@@ -1,11 +1,12 @@
-package exporter_async
+package consumer
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"github.com/nats-io/stan.go"
-	"github.com/nnqq/scr-exporter/xlsx"
+	"github.com/nnqq/scr-exporter/csv"
+	"github.com/nnqq/scr-proto/codegen/go/opts"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
@@ -15,7 +16,9 @@ import (
 
 func (c Consumer) cb(rawMsg *stan.Msg) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		// TODO redis cache
+
+		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Minute)
 		defer cancel()
 
 		ack := func() {
@@ -25,7 +28,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			}
 		}
 
-		var msg processAsyncMessage
+		var msg message
 		err := json.Unmarshal(rawMsg.Data, &msg)
 		if err != nil {
 			c.logger.Error().Err(err).Msg("got malformed msg, just ack")
@@ -64,6 +67,9 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 		}
 
 		compStream, err := c.companyClient.GetFull(ctx, &parser.GetV2Request{
+			Opts: &opts.Page{
+				Limit: 100000,
+			},
 			CityIds:            msg.Query.GetCityIds(),
 			CategoryIds:        msg.Query.GetCategoryIds(),
 			HasEmail:           msg.Query.GetHasEmail(),
@@ -103,12 +109,18 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			}
 		})
 
-		var s3XlsxURL string
+		var csvPath string
 		eg.Go(func() (e error) {
-			s3XlsxURL, e = xlsx.Create(compCh)
+			csvPath, e = csv.Create(compCh)
 			return
 		})
 		err = eg.Wait()
+		if err != nil {
+			c.logger.Error().Err(err).Send()
+			return
+		}
+
+		s3URL, err := c.store.Put(ctx, csvPath, true)
 		if err != nil {
 			c.logger.Error().Err(err).Send()
 			return
@@ -126,7 +138,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 				return
 			}
 
-			e = c.fileModel.SetSuccess(sc, msg.ID, s3XlsxURL)
+			e = c.fileModel.SetSuccess(sc, msg.ID, s3URL)
 			return
 		})
 		if err != nil {

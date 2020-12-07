@@ -26,16 +26,16 @@ func (s *server) ExportCompaniesAsync(ctx context.Context, req *parser.GetListRe
 		return
 	}
 
-	userOID, err := md.GetUserOID(ctx)
+	authUserOID, err := md.GetUserOID(ctx)
 	if err != nil {
 		return
 	}
 
 	eventOID := primitive.NewObjectID()
 
-	err = s.fileModel.EnsureLimitAndCreatePending(ctx, userOID, eventOID, "Выгрузка xlsx")
+	err = s.fileModel.EnsureLimitAndCreatePending(ctx, authUserOID, eventOID, "Выгрузка csv")
 	if err != nil {
-		if errors.Is(err, file.ErrDailyLimitExceeded) {
+		if errors.Is(err, file.ErrConcExports) {
 			return
 		}
 

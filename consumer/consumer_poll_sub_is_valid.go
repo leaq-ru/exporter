@@ -1,4 +1,4 @@
-package exporter_async
+package consumer
 
 import "time"
 

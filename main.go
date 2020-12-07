@@ -4,14 +4,15 @@ import (
 	"context"
 	"github.com/nnqq/scr-exporter/call"
 	"github.com/nnqq/scr-exporter/config"
+	"github.com/nnqq/scr-exporter/consumer"
 	"github.com/nnqq/scr-exporter/event_log"
-	"github.com/nnqq/scr-exporter/exporter_async"
 	"github.com/nnqq/scr-exporter/exporterimpl"
 	"github.com/nnqq/scr-exporter/file"
 	"github.com/nnqq/scr-exporter/logger"
 	"github.com/nnqq/scr-exporter/minio"
 	"github.com/nnqq/scr-exporter/mongo"
 	"github.com/nnqq/scr-exporter/stan"
+	"github.com/nnqq/scr-exporter/store"
 	graceful "github.com/nnqq/scr-lib-graceful"
 	"github.com/nnqq/scr-proto/codegen/go/exporter"
 	"google.golang.org/grpc"
@@ -56,25 +57,32 @@ func main() {
 	)
 	logg.Must(err)
 
-	consumer := exporter_async.NewConsumer(
+	st := store.NewStore(minioClient, cfg.S3.ExporterBucketName)
+	fileModel := file.NewModel(db)
+	eventLogModel := event_log.NewModel(db)
+	ss := db.Client().StartSession
+
+	cons := consumer.NewConsumer(
 		logg.ZL,
 		stanConn,
-		minioClient,
+		st,
 		companyClient,
-		file.NewModel(db),
-		event_log.NewModel(db),
-		db.Client().StartSession,
+		fileModel,
+		eventLogModel,
+		ss,
 		cfg.ServiceName,
 	)
-	logg.Must(consumer.Subscribe())
+	logg.Must(cons.Subscribe())
 
-	grpcSrv := grpc.NewServer()
-	grpc_health_v1.RegisterHealthServer(grpcSrv, health.NewServer())
-	exporter.RegisterExporterServer(grpcSrv, exporterimpl.NewServer(
+	srv := grpc.NewServer()
+	grpc_health_v1.RegisterHealthServer(srv, health.NewServer())
+	exporter.RegisterExporterServer(srv, exporterimpl.NewServer(
 		logg.ZL,
-		file.NewModel(db),
-		consumer.ProcessAsync,
-		db.Client().StartSession,
+		st,
+		companyClient,
+		fileModel,
+		cons.ProcessAsync,
+		ss,
 	))
 
 	lis, err := net.Listen("tcp", strings.Join([]string{
@@ -87,15 +95,15 @@ func main() {
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
-		graceful.HandleSignals(grpcSrv.GracefulStop, consumer.GracefulStop)
+		graceful.HandleSignals(srv.GracefulStop, cons.GracefulStop)
 	}()
 	go func() {
 		defer wg.Done()
-		logg.Must(grpcSrv.Serve(lis))
+		logg.Must(srv.Serve(lis))
 	}()
 	go func() {
 		defer wg.Done()
-		logg.Must(consumer.Serve())
+		logg.Must(cons.Serve())
 	}()
 	wg.Wait()
 }

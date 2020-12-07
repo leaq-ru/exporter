@@ -1,11 +1,11 @@
-package exporter_async
+package consumer
 
 import (
-	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/stan.go"
 	"github.com/nnqq/scr-exporter/event_log"
 	"github.com/nnqq/scr-exporter/file"
 	"github.com/nnqq/scr-exporter/mongo"
+	"github.com/nnqq/scr-exporter/store"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
 	"github.com/rs/zerolog"
 )
@@ -19,7 +19,7 @@ type state struct {
 type Consumer struct {
 	logger            zerolog.Logger
 	stanConn          stan.Conn
-	minioClient       *minio.Client
+	store             store.Store
 	companyClient     parser.CompanyClient
 	fileModel         file.Model
 	eventLogModel     event_log.Model

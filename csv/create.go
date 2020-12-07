@@ -1,24 +1,33 @@
-package xlsx
+package csv
 
 import (
+	"encoding/csv"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
-	"github.com/tealeg/xlsx/v3"
 	"os"
+	"strconv"
 	"strings"
 )
 
-func Create(ch chan *parser.FullCompanyV2) (s3XlsxURL string, err error) {
-	file := xlsx.NewFile(xlsx.UseDiskVCellStore)
-	sh, err := file.AddSheet("Компании")
+func Create(ch chan *parser.FullCompanyV2) (csvPath string, err error) {
+	u, err := uuid.NewRandom()
 	if err != nil {
 		return
 	}
 
+	csvPath = u.String() + ".csv"
+	fd, err := os.Create(csvPath)
+	if err != nil {
+		return
+	}
+	defer fd.Close()
+
+	file := csv.NewWriter(fd)
+	defer file.Flush()
+
 	const managersCount = 5
 
-	header := sh.AddRow()
 	headerVals := []string{
 		"Сайт",
 		"Категория",
@@ -58,13 +67,12 @@ func Create(ch chan *parser.FullCompanyV2) (s3XlsxURL string, err error) {
 		"Приоритетное размещение",
 	}
 	headerVals = append(headerVals, makeManagers(managersCount)...)
-	for _, val := range headerVals {
-		header.AddCell().SetValue(val)
+	err = file.Write(headerVals)
+	if err != nil {
+		return
 	}
 
 	for comp := range ch {
-		row := sh.AddRow()
-
 		var techCats []string
 		for _, tc := range comp.GetTechnologyCategories() {
 			for _, t := range tc.GetTechnologies() {
@@ -75,34 +83,38 @@ func Create(ch chan *parser.FullCompanyV2) (s3XlsxURL string, err error) {
 			}
 		}
 
-		var managers []interface{}
-		for _, ppl := range comp.GetPeople() {
+		var managers []string
+		for i, ppl := range comp.GetPeople() {
+			if i+1 == managersCount {
+				break
+			}
+
 			managers = append(
 				managers,
-				ppl.GetVkId(),
+				strconv.Itoa(int(ppl.GetVkId())),
 				ppl.GetFirstName(),
 				ppl.GetLastName(),
 				makeRuBool(ppl.GetVkIsClosed()),
 				makeRuSex(ppl.GetSex()),
 				ppl.GetPhoto_200(),
-				ppl.GetPhone(),
+				strconv.Itoa(int(ppl.GetPhone())),
 				ppl.GetEmail(),
 				ppl.GetDescription(),
 			)
 		}
 
-		vals := []interface{}{
+		vals := []string{
 			comp.GetUrl(),
 			comp.GetCategory().GetTitle(),
 			comp.GetSlug(),
 			comp.GetTitle(),
 			comp.GetEmail(),
-			comp.GetPhone(),
+			strconv.Itoa(int(comp.GetPhone())),
 			comp.GetDescription(),
 			makeRuBool(comp.GetOnline()),
-			comp.GetInn(),
-			comp.GetKpp(),
-			comp.GetOgrn(),
+			strconv.Itoa(int(comp.GetInn())),
+			strconv.Itoa(int(comp.GetKpp())),
+			strconv.Itoa(int(comp.GetOgrn())),
 			comp.GetDomain().GetAddress(),
 			comp.GetDomain().GetRegistrar(),
 			comp.GetDomain().GetRegistrationDate(),
@@ -112,46 +124,38 @@ func Create(ch chan *parser.FullCompanyV2) (s3XlsxURL string, err error) {
 			comp.GetLocation().GetAddressTitle(),
 			comp.GetApp().GetAppStore().GetUrl(),
 			comp.GetApp().GetGooglePlay().GetUrl(),
-			comp.GetSocial().GetVk().GetGroupId(),
+			strconv.Itoa(int(comp.GetSocial().GetVk().GetGroupId())),
 			comp.GetSocial().GetVk().GetName(),
 			comp.GetSocial().GetVk().GetScreenName(),
 			parser.IsClosed_name[int32(comp.GetSocial().GetVk().GetIsClosed())],
 			comp.GetSocial().GetVk().GetDescription(),
-			comp.GetSocial().GetVk().GetMembersCount(),
+			strconv.Itoa(int(comp.GetSocial().GetVk().GetMembersCount())),
 			comp.GetSocial().GetVk().GetPhoto_200(),
 			comp.GetSocial().GetInstagram().GetUrl(),
 			comp.GetSocial().GetTwitter().GetUrl(),
 			comp.GetSocial().GetYoutube().GetUrl(),
 			comp.GetSocial().GetFacebook().GetUrl(),
 			comp.GetUpdatedAt(),
-			strings.Join(techCats, ","),
-			comp.GetPageSpeed(),
+			strings.Join(techCats, ";"),
+			strconv.Itoa(int(comp.GetPageSpeed())),
 			makeRuBool(comp.GetVerified()),
 			makeRuBool(comp.GetPremium()),
 		}
 		vals = append(vals, managers...)
 
-		for _, val := range vals {
-			row.AddCell().SetValue(val)
+		for i, val := range vals {
+			vals[i] = strings.ReplaceAll(strings.ToValidUTF8(val, " "), "\n", " ")
+		}
+
+		if len(headerVals) > len(vals) {
+			vals = append(vals, make([]string, len(headerVals)-len(vals))...)
+		}
+		err = file.Write(vals)
+		if err != nil {
+			return
 		}
 	}
-
-	u, err := uuid.NewRandom()
-	if err != nil {
-		return
-	}
-
-	s3XlsxURL = "tmp/" + u.String() + ".xlsx"
-	err = file.Save(s3XlsxURL)
-	if err != nil {
-		return
-	}
-
-	return uploadToS3(s3XlsxURL)
-}
-
-func uploadToS3(path string) (s3URL string, err error) {
-	os.Open(path)
+	return
 }
 
 func makeManagers(count int) (out []string) {

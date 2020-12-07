@@ -1,4 +1,4 @@
-package exporter_async
+package consumer
 
 func (c Consumer) GracefulStop() {
 	err := c.stanConn.Close()

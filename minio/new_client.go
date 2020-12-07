@@ -51,7 +51,8 @@ func NewClient(
 	err = client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{
 		Region: region,
 	})
-	if err != nil {
+	if err != nil &&
+		err.Error() != "Your previous request to create the named bucket succeeded and you already own it." {
 		return
 	}
 

@@ -1,4 +1,4 @@
-package exporter_async
+package consumer
 
 import (
 	"github.com/nats-io/stan.go"
@@ -14,8 +14,8 @@ func (c Consumer) Subscribe() (err error) {
 		c.cb,
 		stan.DurableName(exportSubjectName),
 		stan.SetManualAckMode(),
-		stan.MaxInflight(3),
-		stan.AckWait(15*time.Minute),
+		stan.MaxInflight(5),
+		stan.AckWait(7*time.Minute),
 	)
 	if err != nil {
 		return

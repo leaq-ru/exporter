@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func Create(ch chan *parser.FullCompanyV2) (csvPath string, err error) {
+func create(ch chan *parser.FullCompanyV2) (csvPath string, err error) {
 	u, err := uuid.NewRandom()
 	if err != nil {
 		return

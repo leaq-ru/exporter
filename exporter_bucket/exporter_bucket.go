@@ -1,8 +1,8 @@
-package store
+package exporter_bucket
 
 import "github.com/minio/minio-go/v7"
 
-type Store struct {
+type ExporterBucket struct {
 	minioClient *minio.Client
 	bucketName  string
 }

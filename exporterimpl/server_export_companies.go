@@ -3,13 +3,12 @@ package exporterimpl
 import (
 	"context"
 	"errors"
+	"github.com/nnqq/scr-exporter/cached_export"
 	"github.com/nnqq/scr-exporter/csv"
 	"github.com/nnqq/scr-exporter/safeerr"
 	"github.com/nnqq/scr-proto/codegen/go/exporter"
 	"github.com/nnqq/scr-proto/codegen/go/opts"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
-	"golang.org/x/sync/errgroup"
-	"io"
 	"time"
 )
 
@@ -20,12 +19,10 @@ func (s *server) ExportCompanies(
 	res *exporter.ExportCompaniesResponse,
 	err error,
 ) {
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// TODO redis cache
-
-	compStream, err := s.companyClient.GetFull(ctx, &parser.GetV2Request{
+	reqComp := &parser.GetV2Request{
 		Opts: &opts.Page{
 			Limit: 1000,
 		},
@@ -47,51 +44,45 @@ func (s *server) ExportCompanies(
 		HasFacebook:        req.GetHasFacebook(),
 		TechnologyIds:      req.GetTechnologyIds(),
 		TechnologyFindRule: req.GetTechnologyFindRule(),
-	})
-	if err != nil {
-		s.logger.Error().Err(err).Send()
-		err = safeerr.InternalServerError
-		return
 	}
 
-	var eg errgroup.Group
-	compCh := make(chan *parser.FullCompanyV2)
-	eg.Go(func() (e error) {
-		defer close(compCh)
+	s3URL, err := s.cachedExportModel.Get(ctx, reqComp)
+	if err != nil {
+		if errors.Is(err, cached_export.ErrNoFound) {
+			err = nil
 
-		for {
-			comp, er := compStream.Recv()
-			e = er
+			compStream, e := s.companyClient.GetFull(ctx, reqComp)
 			if e != nil {
-				if errors.Is(e, io.EOF) {
-					e = nil
-				} else {
-					s.logger.Error().Err(e).Send()
-				}
+				s.logger.Error().Err(e).Send()
+				err = safeerr.InternalServerError
 				return
 			}
 
-			compCh <- comp
+			csvPath, e := csv.DoPipeline(ctx, compStream, new(uint32))
+			if e != nil {
+				s.logger.Error().Err(e).Send()
+				err = safeerr.InternalServerError
+				return
+			}
+
+			s3URL, e = s.exporterBucket.Put(ctx, csvPath, true)
+			if e != nil {
+				s.logger.Error().Err(e).Send()
+				err = safeerr.InternalServerError
+				return
+			}
+
+			e = s.cachedExportModel.Set(ctx, reqComp, s3URL)
+			if e != nil {
+				s.logger.Error().Err(e).Send()
+				err = safeerr.InternalServerError
+				return
+			}
+		} else {
+			s.logger.Error().Err(err).Send()
+			err = safeerr.InternalServerError
+			return
 		}
-	})
-
-	var csvPath string
-	eg.Go(func() (e error) {
-		csvPath, e = csv.Create(compCh)
-		return
-	})
-	err = eg.Wait()
-	if err != nil {
-		s.logger.Error().Err(err).Send()
-		err = safeerr.InternalServerError
-		return
-	}
-
-	s3URL, err := s.store.Put(ctx, csvPath, true)
-	if err != nil {
-		s.logger.Error().Err(err).Send()
-		err = safeerr.InternalServerError
-		return
 	}
 
 	res = &exporter.ExportCompaniesResponse{

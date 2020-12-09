@@ -48,6 +48,9 @@ func (s *server) ExportCompaniesAsync(ctx context.Context, req *parser.GetListRe
 	if err != nil {
 		s.logger.Error().Err(err).Send()
 		err = safeerr.InternalServerError
+		return
 	}
+
+	res = &empty.Empty{}
 	return
 }

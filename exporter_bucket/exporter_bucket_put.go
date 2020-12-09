@@ -1,4 +1,4 @@
-package store
+package exporter_bucket
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (s Store) Put(ctx context.Context, path string, deleteAfterUpload bool) (s3URL string, err error) {
+func (s ExporterBucket) Put(ctx context.Context, path string, deleteAfterUpload bool) (s3URL string, err error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 

@@ -15,10 +15,24 @@ func createIndex(db *mongo.Database) (err error) {
 		Keys: bson.M{
 			"u": 1,
 		},
+	}, {
+		Keys: bson.M{
+			"ca": 1,
+		},
+		Options: options.Index().SetExpireAfterSeconds(int32((24 * time.Hour).Seconds())),
+	}})
+	if err != nil {
+		return
+	}
+
+	_, err = db.Collection(CollCachedExport).Indexes().CreateMany(ctx, []mongo.IndexModel{{
+		Keys: bson.M{
+			"m": 1,
+		},
 		Options: options.Index().SetUnique(true),
 	}, {
 		Keys: bson.M{
-			"c": 1,
+			"ca": 1,
 		},
 		Options: options.Index().SetExpireAfterSeconds(int32((24 * time.Hour).Seconds())),
 	}})

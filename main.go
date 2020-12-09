@@ -2,17 +2,18 @@ package main
 
 import (
 	"context"
+	"github.com/nnqq/scr-exporter/cached_export"
 	"github.com/nnqq/scr-exporter/call"
 	"github.com/nnqq/scr-exporter/config"
 	"github.com/nnqq/scr-exporter/consumer"
 	"github.com/nnqq/scr-exporter/event_log"
+	"github.com/nnqq/scr-exporter/exporter_bucket"
 	"github.com/nnqq/scr-exporter/exporterimpl"
 	"github.com/nnqq/scr-exporter/file"
 	"github.com/nnqq/scr-exporter/logger"
 	"github.com/nnqq/scr-exporter/minio"
 	"github.com/nnqq/scr-exporter/mongo"
 	"github.com/nnqq/scr-exporter/stan"
-	"github.com/nnqq/scr-exporter/store"
 	graceful "github.com/nnqq/scr-lib-graceful"
 	"github.com/nnqq/scr-proto/codegen/go/exporter"
 	"google.golang.org/grpc"
@@ -51,24 +52,31 @@ func main() {
 		cfg.S3.AccessKeyID,
 		cfg.S3.SecretAccessKey,
 		cfg.S3.Endpoint,
-		cfg.S3.Region,
-		cfg.S3.ExporterBucketName,
 		cfg.S3.Secure,
 	)
 	logg.Must(err)
 
-	st := store.NewStore(minioClient, cfg.S3.ExporterBucketName)
+	exporterBucket, err := exporter_bucket.NewExporterBucket(
+		ctx,
+		minioClient,
+		cfg.S3.ExporterBucketName,
+		cfg.S3.Region,
+	)
+	logg.Must(err)
+
 	fileModel := file.NewModel(db)
 	eventLogModel := event_log.NewModel(db)
+	cachedExportModel := cached_export.NewModel(db)
 	ss := db.Client().StartSession
 
 	cons := consumer.NewConsumer(
 		logg.ZL,
 		stanConn,
-		st,
+		exporterBucket,
 		companyClient,
 		fileModel,
 		eventLogModel,
+		cachedExportModel,
 		ss,
 		cfg.ServiceName,
 	)
@@ -78,9 +86,10 @@ func main() {
 	grpc_health_v1.RegisterHealthServer(srv, health.NewServer())
 	exporter.RegisterExporterServer(srv, exporterimpl.NewServer(
 		logg.ZL,
-		st,
+		exporterBucket,
 		companyClient,
 		fileModel,
+		cachedExportModel,
 		cons.ProcessAsync,
 		ss,
 	))

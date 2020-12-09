@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (m Model) SetInProgress(ctx context.Context, eventID primitive.ObjectID, totalCount uint32) (err error) {
+func (m Model) SetCurrentCount(ctx context.Context, eventID primitive.ObjectID, currentCount uint32) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -15,8 +15,7 @@ func (m Model) SetInProgress(ctx context.Context, eventID primitive.ObjectID, to
 		EventID: eventID,
 	}, bson.M{
 		"$set": file{
-			Status:     status_inProgress,
-			TotalCount: totalCount,
+			CurrentCount: currentCount,
 		},
 	})
 	return

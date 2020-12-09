@@ -5,34 +5,29 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/nats-io/stan.go"
+	"github.com/nnqq/scr-exporter/cached_export"
 	"github.com/nnqq/scr-exporter/csv"
-	"github.com/nnqq/scr-proto/codegen/go/opts"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/sync/errgroup"
-	"io"
 	"time"
 )
 
 func (c Consumer) cb(rawMsg *stan.Msg) {
 	go func() {
-		// TODO redis cache
-
-		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
 		defer cancel()
 
-		ack := func() {
+		defer func() {
 			e := rawMsg.Ack()
 			if e != nil {
 				c.logger.Error().Err(e).Send()
 			}
-		}
+		}()
 
 		var msg message
 		err := json.Unmarshal(rawMsg.Data, &msg)
 		if err != nil {
 			c.logger.Error().Err(err).Msg("got malformed msg, just ack")
-			ack()
 			return
 		}
 
@@ -43,33 +38,24 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 		}
 
 		if alreadyProcessed {
-			ack()
 			return
 		}
 
-		if rawMsg.RedeliveryCount >= 15 {
-			c.logger.Error().Msg("got dead letter message, set status=fail and ack")
-
-			err = c.fileModel.SetFail(ctx, msg.ID)
-			if err != nil {
-				c.logger.Error().Err(err).Send()
-				return
+		failed := func() {
+			e := c.fileModel.SetFail(ctx, msg.ID)
+			if e != nil {
+				c.logger.Error().Err(e).Send()
 			}
-
-			ack()
-			return
 		}
 
-		err = c.fileModel.SetInProgress(ctx, msg.ID)
+		err = c.eventLogModel.Put(ctx, msg.ID)
 		if err != nil {
 			c.logger.Error().Err(err).Send()
+			failed()
 			return
 		}
 
-		compStream, err := c.companyClient.GetFull(ctx, &parser.GetV2Request{
-			Opts: &opts.Page{
-				Limit: 100000,
-			},
+		reqComp := &parser.GetV2Request{
 			CityIds:            msg.Query.GetCityIds(),
 			CategoryIds:        msg.Query.GetCategoryIds(),
 			HasEmail:           msg.Query.GetHasEmail(),
@@ -88,64 +74,93 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			HasFacebook:        msg.Query.GetHasFacebook(),
 			TechnologyIds:      msg.Query.GetTechnologyIds(),
 			TechnologyFindRule: msg.Query.GetTechnologyFindRule(),
-		})
+		}
 
-		var eg errgroup.Group
-		compCh := make(chan *parser.FullCompanyV2)
-		eg.Go(func() (e error) {
-			defer close(compCh)
+		s3URL, err := c.cachedExportModel.Get(ctx, reqComp)
+		if err != nil {
+			if errors.Is(err, cached_export.ErrNoFound) {
+				err = nil
 
-			for {
-				comp, er := compStream.Recv()
-				e = er
-				if e != nil {
-					if errors.Is(e, io.EOF) {
-						e = nil
+				var eg errgroup.Group
+				var totalCount uint32
+				eg.Go(func() (egErr error) {
+					resCount, errCount := c.companyClient.GetCount(ctx, reqComp)
+					if errCount != nil {
+						egErr = errCount
+						return
 					}
+
+					totalCount = resCount.GetCount()
+					return
+				})
+
+				var compStream parser.Company_GetFullClient
+				eg.Go(func() (egErr error) {
+					compStream, egErr = c.companyClient.GetFull(ctx, reqComp)
+					return
+				})
+				e := eg.Wait()
+				if e != nil {
+					c.logger.Error().Err(e).Send()
+					failed()
 					return
 				}
 
-				compCh <- comp
-			}
-		})
+				e = c.fileModel.SetInProgress(ctx, msg.ID, totalCount)
+				if e != nil {
+					c.logger.Error().Err(e).Send()
+					failed()
+					return
+				}
 
-		var csvPath string
-		eg.Go(func() (e error) {
-			csvPath, e = csv.Create(compCh)
-			return
-		})
-		err = eg.Wait()
-		if err != nil {
-			c.logger.Error().Err(err).Send()
-			return
-		}
+				var currentCount uint32
+				go func() {
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						default:
+							time.Sleep(10 * time.Second)
+							errSetCount := c.fileModel.SetCurrentCount(ctx, msg.ID, currentCount)
+							if errSetCount != nil {
+								c.logger.Error().Err(errSetCount).Send()
+							}
+						}
+					}
+				}()
 
-		s3URL, err := c.store.Put(ctx, csvPath, true)
-		if err != nil {
-			c.logger.Error().Err(err).Send()
-			return
-		}
+				csvPath, e := csv.DoPipeline(ctx, compStream, &currentCount)
+				if e != nil {
+					c.logger.Error().Err(e).Send()
+					failed()
+					return
+				}
 
-		sess, err := c.mongoStartSession()
-		if err != nil {
-			c.logger.Error().Err(err).Send()
-			return
-		}
+				s3URL, e = c.exporterBucket.Put(ctx, csvPath, true)
+				if e != nil {
+					c.logger.Error().Err(e).Send()
+					failed()
+					return
+				}
 
-		_, err = sess.WithTransaction(ctx, func(sc mongo.SessionContext) (_ interface{}, e error) {
-			e = c.eventLogModel.Put(sc, msg.ID)
-			if e != nil {
+				e = c.cachedExportModel.Set(ctx, reqComp, s3URL)
+				if e != nil {
+					c.logger.Error().Err(e).Send()
+					failed()
+					return
+				}
+			} else {
+				c.logger.Error().Err(err).Send()
+				failed()
 				return
 			}
-
-			e = c.fileModel.SetSuccess(sc, msg.ID, s3URL)
-			return
-		})
-		if err != nil {
-			c.logger.Error().Err(err).Send()
-			return
 		}
 
-		ack()
+		err = c.fileModel.SetSuccess(ctx, msg.ID, s3URL)
+		if err != nil {
+			c.logger.Error().Err(err).Send()
+			failed()
+		}
+		return
 	}()
 }

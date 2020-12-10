@@ -19,7 +19,7 @@ func createIndex(db *mongo.Database) (err error) {
 		Keys: bson.M{
 			"ca": 1,
 		},
-		Options: options.Index().SetExpireAfterSeconds(int32((24 * time.Hour).Seconds())),
+		Options: options.Index().SetExpireAfterSeconds(int32((3 * 24 * time.Hour).Seconds())),
 	}})
 	if err != nil {
 		return
@@ -34,7 +34,7 @@ func createIndex(db *mongo.Database) (err error) {
 		Keys: bson.M{
 			"ca": 1,
 		},
-		Options: options.Index().SetExpireAfterSeconds(int32((24 * time.Hour).Seconds())),
+		Options: options.Index().SetExpireAfterSeconds(int32((3 * 24 * time.Hour).Seconds())),
 	}})
 	return
 }

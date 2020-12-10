@@ -13,7 +13,7 @@ func NewExporterBucket(
 	bucketName,
 	region string,
 ) (
-	st ExporterBucket,
+	eb ExporterBucket,
 	err error,
 ) {
 	err = minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{
@@ -43,7 +43,7 @@ func NewExporterBucket(
 			ID:     "Remove expired files",
 			Status: "Enabled",
 			Expiration: lifecycle.Expiration{
-				Days: 2,
+				Days: 6,
 			},
 		}, {
 			ID:     "Remove expired multipart upload",
@@ -57,7 +57,7 @@ func NewExporterBucket(
 		return
 	}
 
-	st = ExporterBucket{
+	eb = ExporterBucket{
 		minioClient: minioClient,
 		bucketName:  bucketName,
 	}

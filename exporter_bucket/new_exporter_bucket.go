@@ -43,7 +43,7 @@ func NewExporterBucket(
 			ID:     "Remove expired files",
 			Status: "Enabled",
 			Expiration: lifecycle.Expiration{
-				Days: 6,
+				Days: 7,
 			},
 		}, {
 			ID:     "Remove expired multipart upload",

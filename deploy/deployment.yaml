@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exporter
+  labels:
+    app: exporter
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: exporter
+  template:
+    metadata:
+      labels:
+        app: exporter
+      annotations:
+        linkerd.io/inject: enabled
+        config.linkerd.io/proxy-cpu-request: 1m
+        config.linkerd.io/proxy-memory-request: 10Mi
+        config.linkerd.io/skip-outbound-ports: "4222"
+    spec:
+      terminationGracePeriodSeconds: 10800
+      imagePullSecrets:
+        - name: ghcr
+      containers:
+        - name: exporter
+          image: busybox
+          command:
+            - /app/servicebin
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - sleep
+                  - 5s
+          livenessProbe:
+            exec:
+              command:
+                - /app/grpc_health_probe
+                - -addr=:8080
+          readinessProbe:
+            exec:
+              command:
+                - /app/grpc_health_probe
+                - -addr=:8080
+          ports:
+            - containerPort: 8080
+              name: grpc
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 50Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          env:
+            - name: GRPC_PORT
+              valueFrom:
+                configMapKeyRef:
+                  key: port
+                  name: grpc
+            - name: MONGODB_URL
+              valueFrom:
+                configMapKeyRef:
+                  key: url
+                  name: mongodb
+            - name: S3_EXPORTERBUCKETNAME
+              valueFrom:
+                configMapKeyRef:
+                  key: exporterbucketname
+                  name: s3
+            - name: S3_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  key: endpoint
+                  name: s3
+            - name: S3_ACCESSKEYID
+              valueFrom:
+                configMapKeyRef:
+                  key: accesskeyid
+                  name: s3
+            - name: S3_SECRETACCESSKEY
+              valueFrom:
+                secretKeyRef:
+                  key: secretaccesskey
+                  name: s3
+            - name: S3_SECURE
+              valueFrom:
+                configMapKeyRef:
+                  key: secure
+                  name: s3
+            - name: S3_REGION
+              valueFrom:
+                configMapKeyRef:
+                  key: region
+                  name: s3
+            - name: STAN_CLUSTERID
+              valueFrom:
+                configMapKeyRef:
+                  key: clusterid
+                  name: stan
+            - name: NATS_URL
+              valueFrom:
+                configMapKeyRef:
+                  key: url
+                  name: nats
+            - name: SERVICE_PARSER
+              valueFrom:
+                configMapKeyRef:
+                  key: parser
+                  name: service
+            - name: LOGLEVEL
+              value: error

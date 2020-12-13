@@ -20,7 +20,8 @@ func NewExporterBucket(
 		Region: region,
 	})
 	if err != nil &&
-		err.Error() != "Your previous request to create the named bucket succeeded and you already own it." {
+		err.Error() != "Your previous request to create the named bucket succeeded and you already own it." &&
+		err.Error() != "Bucket already exists" {
 		return
 	}
 

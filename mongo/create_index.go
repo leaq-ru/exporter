@@ -12,8 +12,16 @@ func createIndex(db *mongo.Database) (err error) {
 	ctx := context.Background()
 
 	_, err = db.Collection(CollFile).Indexes().CreateMany(ctx, []mongo.IndexModel{{
+		Keys: bson.D{{
+			Key:   "u",
+			Value: 1,
+		}, {
+			Key:   "_id",
+			Value: -1,
+		}},
+	}, {
 		Keys: bson.M{
-			"u": 1,
+			"e": 1,
 		},
 	}, {
 		Keys: bson.M{

@@ -8,7 +8,6 @@ import (
 	"github.com/nnqq/scr-exporter/cached_export"
 	"github.com/nnqq/scr-exporter/csv"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
-	"golang.org/x/sync/errgroup"
 	"time"
 )
 
@@ -81,32 +80,21 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			if errors.Is(err, cached_export.ErrNoFound) {
 				err = nil
 
-				var eg errgroup.Group
-				var totalCount uint32
-				eg.Go(func() (egErr error) {
-					resCount, errCount := c.companyClient.GetCount(ctx, reqComp)
-					if errCount != nil {
-						egErr = errCount
+				go func() {
+					resCount, e := c.companyClient.GetCount(ctx, reqComp)
+					if e != nil {
 						return
 					}
 
-					totalCount = resCount.GetCount()
-					return
-				})
+					e = c.fileModel.SetInProgress(ctx, msg.ID, resCount.GetCount())
+					if e != nil {
+						c.logger.Error().Err(e).Send()
+						failed()
+						return
+					}
+				}()
 
-				var compStream parser.Company_GetFullClient
-				eg.Go(func() (egErr error) {
-					compStream, egErr = c.companyClient.GetFull(ctx, reqComp)
-					return
-				})
-				e := eg.Wait()
-				if e != nil {
-					c.logger.Error().Err(e).Send()
-					failed()
-					return
-				}
-
-				e = c.fileModel.SetInProgress(ctx, msg.ID, totalCount)
+				compStream, e := c.companyClient.GetFull(ctx, reqComp)
 				if e != nil {
 					c.logger.Error().Err(e).Send()
 					failed()

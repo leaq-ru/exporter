@@ -39,10 +39,13 @@ func (s *server) GetMyFiles(
 	res = &exporter.GetMyFilesResponse{}
 	for _, f := range files {
 		res.Files = append(res.Files, &exporter.File{
-			Id:        f.ID.Hex(),
-			Name:      f.Name,
-			Url:       f.URL,
-			CreatedAt: f.CreatedAt.String(),
+			Id:           f.ID.Hex(),
+			Name:         f.Name,
+			Url:          f.URL,
+			CreatedAt:    f.CreatedAt.String(),
+			Status:       exporter.Status(f.Status),
+			CurrentCount: f.CurrentCount,
+			TotalCount:   f.TotalCount,
 		})
 	}
 	return

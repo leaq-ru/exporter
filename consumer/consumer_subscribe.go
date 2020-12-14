@@ -14,7 +14,7 @@ func (c Consumer) Subscribe() (err error) {
 		c.cb,
 		stan.DurableName(exportSubjectName),
 		stan.SetManualAckMode(),
-		stan.MaxInflight(5),
+		stan.MaxInflight(1),
 		stan.AckWait(3*time.Hour),
 	)
 	if err != nil {

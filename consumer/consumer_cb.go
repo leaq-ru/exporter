@@ -13,7 +13,7 @@ import (
 
 func (c Consumer) cb(rawMsg *stan.Msg) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
+		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Hour)
 		defer cancel()
 
 		defer func() {
@@ -41,7 +41,10 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 		}
 
 		failed := func() {
-			e := c.fileModel.SetFail(ctx, msg.ID)
+			// we must update status even the parent Context deadline exceeded
+			ctxFail, ctxFailCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer ctxFailCancel()
+			e := c.fileModel.SetFail(ctxFail, msg.ID)
 			if e != nil {
 				c.logger.Error().Err(e).Send()
 			}

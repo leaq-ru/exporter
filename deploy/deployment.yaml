@@ -19,7 +19,6 @@ spec:
         config.linkerd.io/proxy-memory-request: 10Mi
         config.linkerd.io/skip-outbound-ports: "4222"
     spec:
-      terminationGracePeriodSeconds: 21600
       imagePullSecrets:
         - name: ghcr
       containers:

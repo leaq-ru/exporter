@@ -6,15 +6,17 @@ import (
 )
 
 type file struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty"`
-	UserID       primitive.ObjectID `bson:"u,omitempty"`
-	EventID      primitive.ObjectID `bson:"e,omitempty"`
-	Name         string             `bson:"n,omitempty"`
-	URL          string             `bson:"ur,omitempty"`
-	Status       status             `bson:"s,omitempty"`
-	CurrentCount uint32             `bson:"c,omitempty"`
-	TotalCount   uint32             `bson:"t,omitempty"`
-	CreatedAt    time.Time          `bson:"ca,omitempty"`
+	ID            primitive.ObjectID `bson:"_id,omitempty"`
+	UserID        primitive.ObjectID `bson:"u,omitempty"`
+	EventID       primitive.ObjectID `bson:"e,omitempty"`
+	Name          string             `bson:"n,omitempty"`
+	URL           string             `bson:"ur,omitempty"`
+	Status        status             `bson:"s,omitempty"`
+	CurrentCount  uint32             `bson:"c,omitempty"`
+	TotalCount    uint32             `bson:"t,omitempty"`
+	Processing    bool               `bson:"p,omitempty"`
+	FromCompanyID string             `bson:"f,omitempty"`
+	CreatedAt     time.Time          `bson:"ca,omitempty"`
 }
 
 type status uint8

@@ -3,16 +3,22 @@ package exporterimpl
 import (
 	"context"
 	"errors"
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/nnqq/scr-exporter/file"
 	"github.com/nnqq/scr-exporter/md"
 	"github.com/nnqq/scr-exporter/safeerr"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"time"
 )
 
-func (s *server) ExportCompaniesAsync(ctx context.Context, req *parser.GetListRequest) (res *empty.Empty, err error) {
+func (s *server) ExportCompaniesAsync(
+	ctx context.Context,
+	req *parser.GetListRequest,
+) (
+	res *emptypb.Empty,
+	err error,
+) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -51,6 +57,6 @@ func (s *server) ExportCompaniesAsync(ctx context.Context, req *parser.GetListRe
 		return
 	}
 
-	res = &empty.Empty{}
+	res = &emptypb.Empty{}
 	return
 }

@@ -2,6 +2,6 @@ package mongo
 
 const (
 	CollFile         = "files"
-	CollEventLog     = "event_logs"
+	CollRow          = "rows"
 	CollCachedExport = "cached_exports"
 )

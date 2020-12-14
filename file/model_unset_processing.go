@@ -7,15 +7,15 @@ import (
 	"time"
 )
 
-func (m Model) SetCurrentCount(ctx context.Context, eventID primitive.ObjectID, currentCount uint32) (err error) {
+func (m Model) UnsetProcessing(ctx context.Context, eventID primitive.ObjectID) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	_, err = m.files.UpdateOne(ctx, file{
 		EventID: eventID,
 	}, bson.M{
-		"$set": file{
-			CurrentCount: currentCount,
+		"$unset": file{
+			Processing: true,
 		},
 	})
 	return

@@ -51,14 +51,16 @@ func (s *server) ExportCompanies(
 		if errors.Is(err, cached_export.ErrNoFound) {
 			err = nil
 
-			compStream, e := s.companyClient.GetFull(ctx, reqComp)
+			compStream, e := s.companyClient.GetFull(ctx, &parser.GetFullRequest{
+				Query: reqComp,
+			})
 			if e != nil {
 				s.logger.Error().Err(e).Send()
 				err = safeerr.InternalServerError
 				return
 			}
 
-			csvPath, e := csv.DoPipeline(ctx, compStream, new(uint32))
+			csvPath, e := csv.DoPipelineSync(ctx, compStream)
 			if e != nil {
 				s.logger.Error().Err(e).Send()
 				err = safeerr.InternalServerError

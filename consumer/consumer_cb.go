@@ -6,56 +6,147 @@ import (
 	"errors"
 	"github.com/nats-io/stan.go"
 	"github.com/nnqq/scr-exporter/cached_export"
-	"github.com/nnqq/scr-exporter/csv"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"golang.org/x/sync/errgroup"
+	"io"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 )
 
 func (c Consumer) cb(rawMsg *stan.Msg) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Hour)
+		deadline := 6 * time.Hour
+
+		ctx, cancel := context.WithTimeout(context.Background(), deadline)
 		defer cancel()
 
-		defer func() {
+		ack := func() {
 			e := rawMsg.Ack()
 			if e != nil {
 				c.logger.Error().Err(e).Send()
 			}
-		}()
+		}
 
 		var msg message
 		err := json.Unmarshal(rawMsg.Data, &msg)
 		if err != nil {
 			c.logger.Error().Err(err).Msg("got malformed msg, just ack")
+			go ack()
 			return
 		}
 
-		alreadyProcessed, err := c.eventLogModel.AlreadyProcessed(ctx, msg.ID)
+		setFail := func() {
+			err := c.fileModel.SetFail(context.Background(), msg.ID)
+			if err != nil {
+				c.logger.Error().Err(err).Send()
+			}
+		}
+
+		if rawMsg.Timestamp < time.Now().UTC().Add(-deadline).UnixNano() {
+			go setFail()
+			go ack()
+			return
+		}
+
+		processing, err := c.fileModel.IsProcessing(ctx, msg.ID)
 		if err != nil {
 			c.logger.Error().Err(err).Send()
 			return
 		}
 
-		if alreadyProcessed {
+		if processing {
 			return
 		}
 
-		failed := func() {
-			// we must update status even the parent Context deadline exceeded
-			ctxFail, ctxFailCancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer ctxFailCancel()
-			e := c.fileModel.SetFail(ctxFail, msg.ID)
+		unsetProcessing := func() {
+			err := c.fileModel.UnsetProcessing(context.Background(), msg.ID)
+			if err != nil {
+				c.logger.Error().Err(err).Send()
+			}
+		}
+
+		err = c.fileModel.SetProcessing(ctx, msg.ID)
+		if err != nil {
+			c.logger.Error().Err(err).Send()
+			return
+		}
+		defer unsetProcessing()
+		defer func() {
+			err := c.rowModel.Flush(ctx)
+			if err != nil {
+				c.logger.Error().Err(err).Send()
+			}
+		}()
+
+		fromCompanyID, err := c.fileModel.GetFromCompanyID(ctx, msg.ID)
+		if err != nil {
+			c.logger.Error().Err(err).Send()
+			return
+		}
+		saveFromCompanyID := func() {
+			if fromCompanyID == "" {
+				return
+			}
+			e := c.fileModel.SetFromCompanyID(context.Background(), msg.ID, fromCompanyID)
 			if e != nil {
 				c.logger.Error().Err(e).Send()
 			}
 		}
 
-		err = c.eventLogModel.Put(ctx, msg.ID)
-		if err != nil {
-			c.logger.Error().Err(err).Send()
-			failed()
-			return
+		cleanRows := func() {
+			e := c.rowModel.Clean(context.Background(), msg.ID)
+			if e != nil {
+				c.logger.Error().Err(e).Send()
+			}
 		}
+
+		var loopDone bool
+		go func() {
+			signals := make(chan os.Signal, 1)
+			signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
+
+			select {
+			case <-ctx.Done():
+				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+					go unsetProcessing()
+					go cleanRows()
+					go setFail()
+					go ack()
+				}
+			case <-signals:
+				var wg sync.WaitGroup
+				wg.Add(4)
+				go func() {
+					defer wg.Done()
+					unsetProcessing()
+				}()
+				go func() {
+					defer wg.Done()
+					saveFromCompanyID()
+				}()
+				go func() {
+					defer wg.Done()
+					err := c.rowModel.Flush(context.Background())
+					if err != nil {
+						c.logger.Error().Err(err).Send()
+					}
+				}()
+				go func() {
+					defer wg.Done()
+					for {
+						if loopDone {
+							return
+						}
+						time.Sleep(time.Second)
+					}
+				}()
+				wg.Wait()
+				c.state.gracefulOK = true
+			}
+		}()
 
 		reqComp := &parser.GetV2Request{
 			CityIds:            msg.Query.GetCityIds(),
@@ -84,27 +175,32 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 				err = nil
 
 				go func() {
-					resCount, e := c.companyClient.GetCount(ctx, reqComp)
-					if e != nil {
+					resCount, err := c.companyClient.GetCount(ctx, reqComp)
+					if err != nil {
+						c.logger.Error().Err(err).Send()
 						return
 					}
 
-					e = c.fileModel.SetInProgress(ctx, msg.ID, resCount.GetCount())
-					if e != nil {
-						c.logger.Error().Err(e).Send()
-						failed()
+					err = c.fileModel.SetInProgress(ctx, msg.ID, resCount.GetCount())
+					if err != nil {
+						c.logger.Error().Err(err).Send()
 						return
 					}
 				}()
 
-				compStream, e := c.companyClient.GetFull(ctx, reqComp)
-				if e != nil {
-					c.logger.Error().Err(e).Send()
-					failed()
+				compStream, err := c.companyClient.GetFull(ctx, &parser.GetFullRequest{
+					Query:  reqComp,
+					FromId: fromCompanyID,
+				})
+				if err != nil {
+					c.logger.Error().Err(err).Send()
 					return
 				}
 
-				var currentCount uint32
+				var (
+					mu           sync.Mutex
+					currentCount uint32
+				)
 				go func() {
 					for {
 						select {
@@ -112,37 +208,85 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 							return
 						default:
 							time.Sleep(10 * time.Second)
-							errSetCount := c.fileModel.SetCurrentCount(ctx, msg.ID, currentCount)
-							if errSetCount != nil {
-								c.logger.Error().Err(errSetCount).Send()
+
+							var eg errgroup.Group
+							eg.Go(func() (e error) {
+								saveFromCompanyID()
+								return
+							})
+							eg.Go(func() (e error) {
+								mu.Lock()
+								delta := currentCount
+								currentCount = 0
+								mu.Unlock()
+
+								if delta == 0 {
+									return
+								}
+								e = c.fileModel.IncCurrentCount(ctx, msg.ID, delta)
+								return
+							})
+							err = eg.Wait()
+							if err != nil {
+								c.logger.Error().Err(err).Send()
 							}
 						}
 					}
 				}()
 
-				csvPath, e := csv.DoPipeline(ctx, compStream, &currentCount)
-				if e != nil {
-					c.logger.Error().Err(e).Send()
-					failed()
+				for {
+					if c.state.drain {
+						loopDone = true
+						return
+					}
+
+					comp, err := compStream.Recv()
+					if err != nil {
+						if errors.Is(err, io.EOF) {
+							break
+						}
+
+						c.logger.Error().Err(err).Send()
+						return
+					}
+
+					err = c.rowModel.Add(ctx, msg.ID, comp)
+					if err != nil {
+						c.logger.Error().Err(err).Send()
+						return
+					}
+
+					mu.Lock()
+					currentCount += 1
+					mu.Unlock()
+					fromCompanyID = comp.GetId()
+				}
+
+				err = c.rowModel.Flush(ctx)
+				if err != nil {
+					c.logger.Error().Err(err).Send()
 					return
 				}
 
-				s3URL, e = c.exporterBucket.Put(ctx, csvPath, true)
-				if e != nil {
-					c.logger.Error().Err(e).Send()
-					failed()
+				csvPath, err := c.rowModel.DoPipeline(ctx, msg.ID)
+				if err != nil {
+					c.logger.Error().Err(err).Send()
 					return
 				}
 
-				e = c.cachedExportModel.Set(ctx, reqComp, s3URL)
-				if e != nil {
-					c.logger.Error().Err(e).Send()
-					failed()
+				s3URL, err = c.exporterBucket.Put(ctx, csvPath, true)
+				if err != nil {
+					c.logger.Error().Err(err).Send()
+					return
+				}
+
+				err = c.cachedExportModel.Set(ctx, reqComp, s3URL)
+				if err != nil {
+					c.logger.Error().Err(err).Send()
 					return
 				}
 			} else {
 				c.logger.Error().Err(err).Send()
-				failed()
 				return
 			}
 		}
@@ -150,8 +294,11 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 		err = c.fileModel.SetSuccess(ctx, msg.ID, s3URL)
 		if err != nil {
 			c.logger.Error().Err(err).Send()
-			failed()
+			return
 		}
+
+		go cleanRows()
+		go ack()
 		return
 	}()
 }

@@ -6,13 +6,13 @@ import (
 	"github.com/nnqq/scr-exporter/call"
 	"github.com/nnqq/scr-exporter/config"
 	"github.com/nnqq/scr-exporter/consumer"
-	"github.com/nnqq/scr-exporter/event_log"
 	"github.com/nnqq/scr-exporter/exporter_bucket"
 	"github.com/nnqq/scr-exporter/exporterimpl"
 	"github.com/nnqq/scr-exporter/file"
 	"github.com/nnqq/scr-exporter/logger"
 	"github.com/nnqq/scr-exporter/minio"
 	"github.com/nnqq/scr-exporter/mongo"
+	"github.com/nnqq/scr-exporter/row"
 	"github.com/nnqq/scr-exporter/stan"
 	graceful "github.com/nnqq/scr-lib-graceful"
 	"github.com/nnqq/scr-proto/codegen/go/exporter"
@@ -65,8 +65,8 @@ func main() {
 	logg.Must(err)
 
 	fileModel := file.NewModel(db)
-	eventLogModel := event_log.NewModel(db)
 	cachedExportModel := cached_export.NewModel(db)
+	rowModel := row.NewModel(db)
 	ss := db.Client().StartSession
 
 	cons := consumer.NewConsumer(
@@ -75,7 +75,7 @@ func main() {
 		exporterBucket,
 		companyClient,
 		fileModel,
-		eventLogModel,
+		rowModel,
 		cachedExportModel,
 		ss,
 		cfg.ServiceName,

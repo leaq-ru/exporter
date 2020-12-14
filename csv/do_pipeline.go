@@ -6,13 +6,11 @@ import (
 	"github.com/nnqq/scr-proto/codegen/go/parser"
 	"golang.org/x/sync/errgroup"
 	"io"
-	"sync/atomic"
 )
 
-func DoPipeline(
+func DoPipelineSync(
 	ctx context.Context,
 	compStream parser.Company_GetFullClient,
-	currentCount *uint32,
 ) (
 	csvPath string,
 	err error,
@@ -40,14 +38,13 @@ func DoPipeline(
 				return
 			default:
 				compCh <- comp
-				atomic.AddUint32(currentCount, 1)
 			}
 		}
 	})
 
 	eg.Go(func() (e error) {
 		defer csvCtxCancel()
-		csvPath, e = create(compCh)
+		csvPath, e = Create(compCh)
 		return
 	})
 	err = eg.Wait()

@@ -2,7 +2,6 @@ package consumer
 
 import (
 	"github.com/nats-io/stan.go"
-	"time"
 )
 
 const exportSubjectName = "export"
@@ -15,7 +14,6 @@ func (c Consumer) Subscribe() (err error) {
 		stan.DurableName(exportSubjectName),
 		stan.SetManualAckMode(),
 		stan.MaxInflight(1),
-		stan.AckWait(6*time.Hour+time.Minute),
 	)
 	if err != nil {
 		return

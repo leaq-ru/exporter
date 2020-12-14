@@ -44,5 +44,19 @@ func createIndex(db *mongo.Database) (err error) {
 		},
 		Options: options.Index().SetExpireAfterSeconds(int32((3 * 24 * time.Hour).Seconds())),
 	}})
+	if err != nil {
+		return
+	}
+
+	_, err = db.Collection(CollRow).Indexes().CreateMany(ctx, []mongo.IndexModel{{
+		Keys: bson.M{
+			"e": 1,
+		},
+	}, {
+		Keys: bson.M{
+			"ca": 1,
+		},
+		Options: options.Index().SetExpireAfterSeconds(int32((6 * time.Hour).Seconds())),
+	}})
 	return
 }

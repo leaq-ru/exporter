@@ -18,7 +18,7 @@ import (
 
 func (c Consumer) cb(rawMsg *stan.Msg) {
 	go func() {
-		deadline := 6 * time.Hour
+		deadline := 10 * time.Hour
 
 		ctx, cancel := context.WithTimeout(context.Background(), deadline)
 		defer cancel()

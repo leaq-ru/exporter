@@ -30,6 +30,7 @@ func (m Model) WatchJob(
 				EventID: slaveEventID,
 			}, bson.M{
 				"$set": file{
+					Status:       status_inProgress,
 					CurrentCount: master.CurrentCount,
 					TotalCount:   master.TotalCount,
 				},
@@ -42,7 +43,8 @@ func (m Model) WatchJob(
 				EventID: slaveEventID,
 			}, bson.M{
 				"$set": file{
-					URL: master.URL,
+					Status: status_success,
+					URL:    master.URL,
 				},
 			})
 			return

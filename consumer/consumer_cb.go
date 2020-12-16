@@ -34,7 +34,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 		err := json.Unmarshal(rawMsg.Data, &msg)
 		if err != nil {
 			c.logger.Error().Err(err).Msg("got malformed msg, just ack")
-			go ack()
+			ack()
 			return
 		}
 
@@ -46,8 +46,8 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 		}
 
 		if rawMsg.Timestamp < time.Now().UTC().Add(-deadline).UnixNano() {
-			go setFail()
-			go ack()
+			setFail()
+			ack()
 			return
 		}
 
@@ -74,6 +74,45 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			return
 		}
 		defer unsetProcessing()
+
+		reqComp := &parser.GetV2Request{
+			CityIds:            msg.Query.GetCityIds(),
+			CategoryIds:        msg.Query.GetCategoryIds(),
+			HasEmail:           msg.Query.GetHasEmail(),
+			HasPhone:           msg.Query.GetHasPhone(),
+			HasOnline:          msg.Query.GetHasOnline(),
+			HasInn:             msg.Query.GetHasInn(),
+			HasKpp:             msg.Query.GetHasKpp(),
+			HasOgrn:            msg.Query.GetHasOgrn(),
+			HasAppStore:        msg.Query.GetHasAppStore(),
+			HasGooglePlay:      msg.Query.GetHasGooglePlay(),
+			HasVk:              msg.Query.GetHasVk(),
+			VkMembersCount:     msg.Query.GetVkMembersCount(),
+			HasInstagram:       msg.Query.GetHasInstagram(),
+			HasTwitter:         msg.Query.GetHasTwitter(),
+			HasYoutube:         msg.Query.GetHasYoutube(),
+			HasFacebook:        msg.Query.GetHasFacebook(),
+			TechnologyIds:      msg.Query.GetTechnologyIds(),
+			TechnologyFindRule: msg.Query.GetTechnologyFindRule(),
+		}
+
+		masterJob, err := c.fileModel.GetMasterJob(ctx, reqComp)
+		if err != nil {
+			c.logger.Error().Err(err).Send()
+			return
+		}
+
+		if !masterJob.IsZero() {
+			err := c.fileModel.WatchJob(ctx, masterJob, msg.ID)
+			if err != nil {
+				c.logger.Error().Err(err).Send()
+				return
+			}
+
+			ack()
+			return
+		}
+
 		defer func() {
 			err := c.rowModel.Flush(ctx)
 			if err != nil {
@@ -111,10 +150,10 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			select {
 			case <-ctx.Done():
 				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-					go unsetProcessing()
-					go cleanRows()
-					go setFail()
-					go ack()
+					unsetProcessing()
+					cleanRows()
+					setFail()
+					ack()
 				}
 			case <-signals:
 				var wg sync.WaitGroup
@@ -148,27 +187,6 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			}
 		}()
 
-		reqComp := &parser.GetV2Request{
-			CityIds:            msg.Query.GetCityIds(),
-			CategoryIds:        msg.Query.GetCategoryIds(),
-			HasEmail:           msg.Query.GetHasEmail(),
-			HasPhone:           msg.Query.GetHasPhone(),
-			HasOnline:          msg.Query.GetHasOnline(),
-			HasInn:             msg.Query.GetHasInn(),
-			HasKpp:             msg.Query.GetHasKpp(),
-			HasOgrn:            msg.Query.GetHasOgrn(),
-			HasAppStore:        msg.Query.GetHasAppStore(),
-			HasGooglePlay:      msg.Query.GetHasGooglePlay(),
-			HasVk:              msg.Query.GetHasVk(),
-			VkMembersCount:     msg.Query.GetVkMembersCount(),
-			HasInstagram:       msg.Query.GetHasInstagram(),
-			HasTwitter:         msg.Query.GetHasTwitter(),
-			HasYoutube:         msg.Query.GetHasYoutube(),
-			HasFacebook:        msg.Query.GetHasFacebook(),
-			TechnologyIds:      msg.Query.GetTechnologyIds(),
-			TechnologyFindRule: msg.Query.GetTechnologyFindRule(),
-		}
-
 		s3URL, err := c.cachedExportModel.Get(ctx, reqComp)
 		if err != nil {
 			if errors.Is(err, cached_export.ErrNoFound) {
@@ -181,7 +199,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 						return
 					}
 
-					err = c.fileModel.SetInProgress(ctx, msg.ID, resCount.GetCount())
+					err = c.fileModel.SetMasterJobInProgress(ctx, msg.ID, reqComp, resCount.GetCount())
 					if err != nil {
 						c.logger.Error().Err(err).Send()
 						return
@@ -297,8 +315,8 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			return
 		}
 
-		go cleanRows()
-		go ack()
+		cleanRows()
+		ack()
 		return
 	}()
 }

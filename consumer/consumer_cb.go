@@ -179,11 +179,9 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 						if loopDone {
 							return
 						}
-						time.Sleep(time.Second)
 					}
 				}()
 				wg.Wait()
-				c.state.gracefulOK = true
 			}
 		}()
 

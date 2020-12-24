@@ -11,10 +11,5 @@ func (c Consumer) GracefulStop() {
 	}
 	close(c.state.done)
 
-	for {
-		if c.state.gracefulOK {
-			return
-		}
-		time.Sleep(time.Second)
-	}
+	time.Sleep(10 * time.Second)
 }

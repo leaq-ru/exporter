@@ -14,7 +14,6 @@ import (
 type state struct {
 	sub               stan.Subscription
 	subscribeCalledOK bool
-	gracefulOK        bool
 	drain             bool
 	done              chan struct{}
 }

@@ -15,8 +15,8 @@ spec:
         app: exporter
       annotations:
         linkerd.io/inject: enabled
-        config.linkerd.io/proxy-cpu-request: 1m
-        config.linkerd.io/proxy-memory-request: 10Mi
+        config.linkerd.io/proxy-cpu-request: 100m
+        config.linkerd.io/proxy-memory-request: 25Mi
         config.linkerd.io/skip-outbound-ports: "4222"
     spec:
       imagePullSecrets:
@@ -48,7 +48,7 @@ spec:
               protocol: TCP
           resources:
             requests:
-              cpu: 50m
+              cpu: 150m
               memory: 50Mi
             limits:
               cpu: "1"

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -15,6 +16,7 @@ import (
 func (m Model) GetMasterJob(
 	ctx context.Context,
 	query *parser.GetV2Request,
+	selfEventID primitive.ObjectID,
 ) (
 	eventID primitive.ObjectID,
 	err error,
@@ -28,9 +30,12 @@ func (m Model) GetMasterJob(
 	}
 
 	var doc file
-	err = m.files.FindOne(ctx, file{
-		MD5:    md5key,
-		Status: status_inProgress,
+	err = m.files.FindOne(ctx, bson.M{
+		"_id": bson.M{
+			"$ne": selfEventID,
+		},
+		"m": md5key,
+		"s": status_inProgress,
 	}).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {

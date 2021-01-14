@@ -115,7 +115,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			TechnologyFindRule: msg.Query.GetTechnologyFindRule(),
 		}
 
-		masterJob, err := c.fileModel.GetMasterJob(ctx, reqComp)
+		masterJob, err := c.fileModel.GetMasterJob(ctx, reqComp, msg.ID)
 		if err != nil {
 			c.logger.Error().Err(err).Send()
 			return

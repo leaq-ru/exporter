@@ -48,8 +48,18 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			}
 		}
 
+		cleanRows := func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			e := c.rowModel.Clean(ctx, msg.ID)
+			if e != nil {
+				c.logger.Error().Err(e).Send()
+			}
+		}
+
 		if rawMsg.Timestamp < time.Now().UTC().Add(-deadline).UnixNano() {
 			setFail()
+			cleanRows()
 			ack()
 			return
 		}
@@ -138,14 +148,9 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			if fromCompanyID == "" {
 				return
 			}
-			e := c.fileModel.SetFromCompanyID(context.Background(), msg.ID, fromCompanyID)
-			if e != nil {
-				c.logger.Error().Err(e).Send()
-			}
-		}
-
-		cleanRows := func() {
-			e := c.rowModel.Clean(context.Background(), msg.ID)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			e := c.fileModel.SetFromCompanyID(ctx, msg.ID, fromCompanyID)
 			if e != nil {
 				c.logger.Error().Err(e).Send()
 			}
@@ -177,7 +182,9 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 				}()
 				go func() {
 					defer wg.Done()
-					err := c.rowModel.Flush(context.Background())
+					ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+					defer cancel()
+					err := c.rowModel.Flush(ctx)
 					if err != nil {
 						c.logger.Error().Err(err).Send()
 					}

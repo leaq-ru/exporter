@@ -31,7 +31,7 @@ func (m Model) GetMasterJob(
 
 	var doc file
 	err = m.files.FindOne(ctx, bson.M{
-		"_id": bson.M{
+		"e": bson.M{
 			"$ne": selfEventID,
 		},
 		"m": md5key,

@@ -14,7 +14,6 @@ type file struct {
 	Status        status             `bson:"s,omitempty"`
 	CurrentCount  uint32             `bson:"c,omitempty"`
 	TotalCount    uint32             `bson:"t,omitempty"`
-	Processing    bool               `bson:"p,omitempty"`
 	FromCompanyID string             `bson:"f,omitempty"`
 	MD5           string             `bson:"m,omitempty"`
 	CreatedAt     time.Time          `bson:"ca,omitempty"`

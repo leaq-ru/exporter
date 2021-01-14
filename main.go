@@ -12,6 +12,7 @@ import (
 	"github.com/nnqq/scr-exporter/logger"
 	"github.com/nnqq/scr-exporter/minio"
 	"github.com/nnqq/scr-exporter/mongo"
+	"github.com/nnqq/scr-exporter/processing_export"
 	"github.com/nnqq/scr-exporter/row"
 	"github.com/nnqq/scr-exporter/stan"
 	graceful "github.com/nnqq/scr-lib-graceful"
@@ -66,6 +67,7 @@ func main() {
 
 	fileModel := file.NewModel(db)
 	cachedExportModel := cached_export.NewModel(db)
+	processingExportModel := processing_export.NewModel(db)
 	rowModel := row.NewModel(db)
 	ss := db.Client().StartSession
 
@@ -77,7 +79,7 @@ func main() {
 		fileModel,
 		rowModel,
 		cachedExportModel,
-		ss,
+		processingExportModel,
 		cfg.ServiceName,
 	)
 	logg.Must(cons.Subscribe())

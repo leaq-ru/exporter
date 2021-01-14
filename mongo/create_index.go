@@ -48,6 +48,21 @@ func createIndex(db *mongo.Database) (err error) {
 		return
 	}
 
+	_, err = db.Collection(CollProcessingExport).Indexes().CreateMany(ctx, []mongo.IndexModel{{
+		Keys: bson.M{
+			"l": 1,
+		},
+		Options: options.Index().SetExpireAfterSeconds(int32(time.Minute.Seconds())),
+	}, {
+		Keys: bson.M{
+			"e": 1,
+		},
+		Options: options.Index().SetUnique(true),
+	}})
+	if err != nil {
+		return
+	}
+
 	_, err = db.Collection(CollRow).Indexes().CreateMany(ctx, []mongo.IndexModel{{
 		Keys: bson.D{{
 			Key:   "m",
@@ -64,7 +79,7 @@ func createIndex(db *mongo.Database) (err error) {
 		Keys: bson.M{
 			"ca": 1,
 		},
-		Options: options.Index().SetExpireAfterSeconds(int32((6 * time.Hour).Seconds())),
+		Options: options.Index().SetExpireAfterSeconds(int32((10 * time.Hour).Seconds())),
 	}})
 	return
 }

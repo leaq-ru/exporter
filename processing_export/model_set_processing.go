@@ -1,9 +1,10 @@
-package file
+package processing_export
 
 import (
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -11,12 +12,12 @@ func (m Model) SetProcessing(ctx context.Context, eventID primitive.ObjectID) (e
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	_, err = m.files.UpdateOne(ctx, file{
+	_, err = m.processingExports.UpdateOne(ctx, processingExport{
 		EventID: eventID,
 	}, bson.M{
-		"$set": file{
-			Processing: true,
+		"$set": processingExport{
+			LastActive: time.Now(),
 		},
-	})
+	}, options.Update().SetUpsert(true))
 	return
 }

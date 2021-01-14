@@ -1,4 +1,4 @@
-package file
+package processing_export
 
 import (
 	"context"
@@ -12,9 +12,8 @@ func (m Model) IsProcessing(ctx context.Context, eventID primitive.ObjectID) (pr
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	err = m.files.FindOne(ctx, file{
-		EventID:    eventID,
-		Processing: true,
+	err = m.processingExports.FindOne(ctx, processingExport{
+		EventID: eventID,
 	}).Err()
 	if err == nil {
 		processing = true

@@ -19,6 +19,7 @@ import (
 func (c Consumer) cb(rawMsg *stan.Msg) {
 	go func() {
 		deadline := 10 * time.Hour
+		commitStateInterval := 10 * time.Second
 
 		ctx, cancel := context.WithTimeout(context.Background(), deadline)
 		defer cancel()
@@ -39,7 +40,9 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 		}
 
 		setFail := func() {
-			err := c.fileModel.SetFail(context.Background(), msg.ID)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			err := c.fileModel.SetFail(ctx, msg.ID)
 			if err != nil {
 				c.logger.Error().Err(err).Send()
 			}
@@ -51,7 +54,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			return
 		}
 
-		processing, err := c.fileModel.IsProcessing(ctx, msg.ID)
+		processing, err := c.processingExportModel.IsProcessing(ctx, msg.ID)
 		if err != nil {
 			c.logger.Error().Err(err).Send()
 			return
@@ -62,17 +65,23 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 		}
 
 		unsetProcessing := func() {
-			err := c.fileModel.UnsetProcessing(context.Background(), msg.ID)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			err := c.processingExportModel.UnsetProcessing(ctx, msg.ID)
 			if err != nil {
 				c.logger.Error().Err(err).Send()
 			}
 		}
 
-		err = c.fileModel.SetProcessing(ctx, msg.ID)
-		if err != nil {
-			c.logger.Error().Err(err).Send()
-			return
-		}
+		go func() {
+			for ctx.Err() == nil {
+				err := c.processingExportModel.SetProcessing(ctx, msg.ID)
+				if err != nil {
+					c.logger.Error().Err(err).Send()
+				}
+				time.Sleep(commitStateInterval)
+			}
+		}()
 		defer unsetProcessing()
 
 		reqComp := &parser.GetV2Request{
@@ -179,6 +188,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 						if loopDone {
 							return
 						}
+						time.Sleep(time.Second)
 					}
 				}()
 				wg.Wait()
@@ -223,7 +233,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 						case <-ctx.Done():
 							return
 						default:
-							time.Sleep(10 * time.Second)
+							time.Sleep(commitStateInterval)
 
 							var eg errgroup.Group
 							eg.Go(func() (e error) {

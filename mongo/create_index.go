@@ -64,14 +64,6 @@ func createIndex(db *mongo.Database) (err error) {
 	}
 
 	_, err = db.Collection(CollRow).Indexes().CreateMany(ctx, []mongo.IndexModel{{
-		Keys: bson.D{{
-			Key:   "m",
-			Value: 1,
-		}, {
-			Key:   "s",
-			Value: 1,
-		}},
-	}, {
 		Keys: bson.M{
 			"e": 1,
 		},

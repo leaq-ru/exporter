@@ -39,7 +39,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	companyClient, err := call.NewClients(cfg.Service.Parser)
+	companyClient, cityClient, categoryClient, err := call.NewClients(
+		cfg.Service.Parser,
+		cfg.Service.City,
+		cfg.Service.Category,
+	)
 	logg.Must(err)
 
 	stanConn, err := stan.NewConn(cfg.ServiceName, cfg.STAN.ClusterID, cfg.NATS.URL)
@@ -69,7 +73,6 @@ func main() {
 	cachedExportModel := cached_export.NewModel(db)
 	processingExportModel := processing_export.NewModel(db)
 	rowModel := row.NewModel(db)
-	ss := db.Client().StartSession
 
 	cons := consumer.NewConsumer(
 		logg.ZL,
@@ -90,10 +93,11 @@ func main() {
 		logg.ZL,
 		exporterBucket,
 		companyClient,
+		cityClient,
+		categoryClient,
 		fileModel,
 		cachedExportModel,
 		cons.ProcessAsync,
-		ss,
 	))
 
 	lis, err := net.Listen("tcp", strings.Join([]string{

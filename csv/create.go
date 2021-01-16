@@ -111,46 +111,48 @@ func Create(ch chan *parser.FullCompanyV2) (csvPath string, err error) {
 
 		const sepMultiValue = ";"
 
-		vals := []string{
-			comp.GetUrl(),
-			comp.GetCategory().GetTitle(),
-			comp.GetSlug(),
-			comp.GetTitle(),
-			comp.GetEmail(),
-			strconv.Itoa(int(comp.GetPhone())),
-			comp.GetDescription(),
-			makeRuBool(comp.GetOnline()),
-			strconv.Itoa(int(comp.GetInn())),
-			strconv.Itoa(int(comp.GetKpp())),
-			strconv.Itoa(int(comp.GetOgrn())),
-			comp.GetDomain().GetAddress(),
-			comp.GetDomain().GetRegistrar(),
-			comp.GetDomain().GetRegistrationDate(),
-			comp.GetAvatar(),
-			comp.GetLocation().GetCity().GetTitle(),
-			comp.GetLocation().GetAddress(),
-			comp.GetLocation().GetAddressTitle(),
-			comp.GetApp().GetAppStore().GetUrl(),
-			comp.GetApp().GetGooglePlay().GetUrl(),
-			strconv.Itoa(int(comp.GetSocial().GetVk().GetGroupId())),
-			comp.GetSocial().GetVk().GetName(),
-			comp.GetSocial().GetVk().GetScreenName(),
-			parser.IsClosed_name[int32(comp.GetSocial().GetVk().GetIsClosed())],
-			comp.GetSocial().GetVk().GetDescription(),
-			strconv.Itoa(int(comp.GetSocial().GetVk().GetMembersCount())),
-			comp.GetSocial().GetVk().GetPhoto_200(),
-			comp.GetSocial().GetInstagram().GetUrl(),
-			comp.GetSocial().GetTwitter().GetUrl(),
-			comp.GetSocial().GetYoutube().GetUrl(),
-			comp.GetSocial().GetFacebook().GetUrl(),
-			comp.GetUpdatedAt(),
-			strings.Join(techCats, sepMultiValue),
-			strconv.Itoa(int(comp.GetPageSpeed())),
-			makeRuBool(comp.GetVerified()),
-			makeRuBool(comp.GetPremium()),
+		vals := make([]string, len(headerVals))
+
+		vals[0] = comp.GetUrl()
+		vals[1] = comp.GetCategory().GetTitle()
+		vals[2] = comp.GetSlug()
+		vals[3] = comp.GetTitle()
+		vals[4] = comp.GetEmail()
+		vals[5] = strconv.Itoa(int(comp.GetPhone()))
+		vals[6] = comp.GetDescription()
+		vals[7] = makeRuBool(comp.GetOnline())
+		vals[8] = strconv.Itoa(int(comp.GetInn()))
+		vals[9] = strconv.Itoa(int(comp.GetKpp()))
+		vals[10] = strconv.Itoa(int(comp.GetOgrn()))
+		vals[11] = comp.GetDomain().GetAddress()
+		vals[12] = comp.GetDomain().GetRegistrar()
+		vals[13] = comp.GetDomain().GetRegistrationDate()
+		vals[14] = comp.GetAvatar()
+		vals[15] = comp.GetLocation().GetCity().GetTitle()
+		vals[16] = comp.GetLocation().GetAddress()
+		vals[17] = comp.GetLocation().GetAddressTitle()
+		vals[18] = comp.GetApp().GetAppStore().GetUrl()
+		vals[19] = comp.GetApp().GetGooglePlay().GetUrl()
+		vals[20] = strconv.Itoa(int(comp.GetSocial().GetVk().GetGroupId()))
+		vals[21] = comp.GetSocial().GetVk().GetName()
+		vals[22] = comp.GetSocial().GetVk().GetScreenName()
+		vals[23] = parser.IsClosed_name[int32(comp.GetSocial().GetVk().GetIsClosed())]
+		vals[24] = comp.GetSocial().GetVk().GetDescription()
+		vals[25] = strconv.Itoa(int(comp.GetSocial().GetVk().GetMembersCount()))
+		vals[26] = comp.GetSocial().GetVk().GetPhoto_200()
+		vals[27] = comp.GetSocial().GetInstagram().GetUrl()
+		vals[28] = comp.GetSocial().GetTwitter().GetUrl()
+		vals[29] = comp.GetSocial().GetYoutube().GetUrl()
+		vals[30] = comp.GetSocial().GetFacebook().GetUrl()
+		vals[31] = comp.GetUpdatedAt()
+		vals[32] = strings.Join(techCats, sepMultiValue)
+		vals[33] = strconv.Itoa(int(comp.GetPageSpeed()))
+		vals[34] = makeRuBool(comp.GetVerified())
+		vals[35] = makeRuBool(comp.GetPremium())
+		for _, man := range managers {
+			vals[35+1] = man
 		}
-		vals = append(vals, managers...)
-		vals = append(vals, strings.Join(dnsNames, sepMultiValue))
+		vals[len(makeManagers(1))*managersCount+36] = strings.Join(dnsNames, sepMultiValue)
 
 		for i, val := range vals {
 			vals[i] = strings.ReplaceAll(strings.ToValidUTF8(val, " "), "\n", " ")

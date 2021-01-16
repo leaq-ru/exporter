@@ -113,6 +113,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			HasFacebook:        msg.Query.GetHasFacebook(),
 			TechnologyIds:      msg.Query.GetTechnologyIds(),
 			TechnologyFindRule: msg.Query.GetTechnologyFindRule(),
+			DnsIds:             msg.Query.GetDnsIds(),
 		}
 
 		masterJob, err := c.fileModel.GetMasterJob(ctx, reqComp, msg.ID)

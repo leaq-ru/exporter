@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (m Model) DoPipeline(
+func (m Model) PipeMongoToLocalFile(
 	ctx context.Context,
 	eventID primitive.ObjectID,
 ) (
@@ -30,11 +30,6 @@ func (m Model) DoPipeline(
 	ch := make(chan *parser.FullCompanyV2)
 	var eg errgroup.Group
 	eg.Go(func() (e error) {
-		csvPath, e = csv.Create(ch)
-		return
-	})
-
-	eg.Go(func() (e error) {
 		defer close(ch)
 
 		for cur.Next(ctx) {
@@ -52,6 +47,13 @@ func (m Model) DoPipeline(
 
 			ch <- comp
 		}
+
+		e = cur.Err()
+		return
+	})
+
+	eg.Go(func() (e error) {
+		csvPath, e = csv.Create(ch)
 		return
 	})
 	err = eg.Wait()

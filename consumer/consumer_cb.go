@@ -301,7 +301,7 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 					return
 				}
 
-				csvPath, err := c.rowModel.DoPipeline(ctx, msg.ID)
+				csvPath, err := c.rowModel.PipeMongoToLocalFile(ctx, msg.ID)
 				if err != nil {
 					c.logger.Error().Err(err).Send()
 					return

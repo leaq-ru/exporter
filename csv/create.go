@@ -67,6 +67,7 @@ func Create(ch chan *parser.FullCompanyV2) (csvPath string, err error) {
 		"Приоритетное размещение",
 	}
 	headerVals = append(headerVals, makeManagers(managersCount)...)
+	headerVals = append(headerVals, "DNS")
 	err = file.Write(headerVals)
 	if err != nil {
 		return
@@ -103,6 +104,13 @@ func Create(ch chan *parser.FullCompanyV2) (csvPath string, err error) {
 			)
 		}
 
+		var dnsNames []string
+		for _, dns := range comp.GetDns() {
+			dnsNames = append(dnsNames, dns.GetName())
+		}
+
+		const sepMultiValue = ";"
+
 		vals := []string{
 			comp.GetUrl(),
 			comp.GetCategory().GetTitle(),
@@ -136,12 +144,13 @@ func Create(ch chan *parser.FullCompanyV2) (csvPath string, err error) {
 			comp.GetSocial().GetYoutube().GetUrl(),
 			comp.GetSocial().GetFacebook().GetUrl(),
 			comp.GetUpdatedAt(),
-			strings.Join(techCats, ";"),
+			strings.Join(techCats, sepMultiValue),
 			strconv.Itoa(int(comp.GetPageSpeed())),
 			makeRuBool(comp.GetVerified()),
 			makeRuBool(comp.GetPremium()),
 		}
 		vals = append(vals, managers...)
+		vals = append(vals, strings.Join(dnsNames, sepMultiValue))
 
 		for i, val := range vals {
 			vals[i] = strings.ReplaceAll(strings.ToValidUTF8(val, " "), "\n", " ")

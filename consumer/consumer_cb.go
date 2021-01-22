@@ -48,18 +48,8 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			}
 		}
 
-		cleanRows := func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-			e := c.rowModel.Clean(ctx, msg.ID)
-			if e != nil {
-				c.logger.Error().Err(e).Send()
-			}
-		}
-
 		if rawMsg.Timestamp < time.Now().UTC().Add(-deadline).UnixNano() {
 			setFail()
-			cleanRows()
 			ack()
 			return
 		}
@@ -166,7 +156,6 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			case <-ctx.Done():
 				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 					unsetProcessing()
-					cleanRows()
 					setFail()
 					ack()
 				}
@@ -331,7 +320,6 @@ func (c Consumer) cb(rawMsg *stan.Msg) {
 			return
 		}
 
-		cleanRows()
 		ack()
 		return
 	}()

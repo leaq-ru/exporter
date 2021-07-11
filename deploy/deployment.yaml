@@ -103,15 +103,5 @@ spec:
                 configMapKeyRef:
                   key: parser
                   name: service
-            - name: SERVICE_CITY
-              valueFrom:
-                configMapKeyRef:
-                  key: city
-                  name: service
-            - name: SERVICE_CATEGORY
-              valueFrom:
-                configMapKeyRef:
-                  key: category
-                  name: service
             - name: LOGLEVEL
               value: error

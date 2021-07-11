@@ -1,20 +1,16 @@
 package call
 
 import (
-	"github.com/nnqq/scr-proto/codegen/go/category"
-	"github.com/nnqq/scr-proto/codegen/go/city"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
 	"google.golang.org/grpc"
 )
 
 func NewClients(
-	parserURL,
-	cityURL,
-	categoryURL string,
+	parserURL string,
 ) (
 	companyClient parser.CompanyClient,
-	cityClient city.CityClient,
-	categoryClient category.CategoryClient,
+	cityClient parser.CityClient,
+	categoryClient parser.CategoryClient,
 	err error,
 ) {
 	connParser, err := grpc.Dial(parserURL, grpc.WithInsecure())
@@ -22,17 +18,7 @@ func NewClients(
 		return
 	}
 	companyClient = parser.NewCompanyClient(connParser)
-
-	connCity, err := grpc.Dial(cityURL, grpc.WithInsecure())
-	if err != nil {
-		return
-	}
-	cityClient = city.NewCityClient(connCity)
-
-	connCategory, err := grpc.Dial(categoryURL, grpc.WithInsecure())
-	if err != nil {
-		return
-	}
-	categoryClient = category.NewCategoryClient(connCategory)
+	cityClient = parser.NewCityClient(connParser)
+	categoryClient = parser.NewCategoryClient(connParser)
 	return
 }

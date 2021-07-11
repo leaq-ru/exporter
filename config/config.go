@@ -29,9 +29,7 @@ type s3 struct {
 }
 
 type service struct {
-	Parser   string `envconfig:"SERVICE_PARSER"`
-	City     string `envconfig:"SERVICE_CITY"`
-	Category string `envconfig:"SERVICE_CATEGORY"`
+	Parser string `envconfig:"SERVICE_PARSER"`
 }
 
 type stan struct {

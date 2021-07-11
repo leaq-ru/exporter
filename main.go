@@ -39,11 +39,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	companyClient, cityClient, categoryClient, err := call.NewClients(
-		cfg.Service.Parser,
-		cfg.Service.City,
-		cfg.Service.Category,
-	)
+	companyClient, cityClient, categoryClient, err := call.NewClients(cfg.Service.Parser)
 	logg.Must(err)
 
 	stanConn, err := stan.NewConn(cfg.ServiceName, cfg.STAN.ClusterID, cfg.NATS.URL)

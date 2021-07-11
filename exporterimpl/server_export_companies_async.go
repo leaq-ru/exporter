@@ -6,8 +6,6 @@ import (
 	"github.com/nnqq/scr-exporter/file"
 	"github.com/nnqq/scr-exporter/md"
 	"github.com/nnqq/scr-exporter/safeerr"
-	"github.com/nnqq/scr-proto/codegen/go/category"
-	"github.com/nnqq/scr-proto/codegen/go/city"
 	"github.com/nnqq/scr-proto/codegen/go/parser"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/sync/errgroup"
@@ -47,7 +45,7 @@ func (s *server) ExportCompaniesAsync(
 	var cityNames []string
 	if len(req.GetCityIds()) != 0 {
 		eg.Go(func() error {
-			resCity, e := s.cityClient.GetByIds(ctx, &city.GetByIdsRequest{
+			resCity, e := s.cityClient.GetCityByIds(ctx, &parser.GetCityByIdsRequest{
 				CityIds: cut(req.GetCityIds(), limitPrettyName),
 			})
 			if e != nil {
@@ -64,7 +62,7 @@ func (s *server) ExportCompaniesAsync(
 	var categoryNames []string
 	if len(req.GetCategoryIds()) != 0 {
 		eg.Go(func() error {
-			resCategory, e := s.categoryClient.GetByIds(ctx, &category.GetByIdsRequest{
+			resCategory, e := s.categoryClient.GetCategoryByIds(ctx, &parser.GetCategoryByIdsRequest{
 				CategoryIds: cut(req.GetCategoryIds(), limitPrettyName),
 			})
 			if e != nil {

@@ -24,7 +24,7 @@ func (s *server) ExportCompanies(
 
 	reqComp := &parser.GetV2Request{
 		Opts: &opts.Page{
-			Limit: 100,
+			Limit: 2500,
 		},
 		CityIds:            req.GetCityIds(),
 		CategoryIds:        req.GetCategoryIds(),

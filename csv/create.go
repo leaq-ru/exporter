@@ -4,7 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"github.com/leaq-ru/proto/codegen/go/parser"
 	"os"
 	"strconv"
 	"strings"

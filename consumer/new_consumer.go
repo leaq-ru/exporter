@@ -1,13 +1,13 @@
 package consumer
 
 import (
+	"github.com/leaq-ru/exporter/cached_export"
+	"github.com/leaq-ru/exporter/exporter_bucket"
+	"github.com/leaq-ru/exporter/file"
+	"github.com/leaq-ru/exporter/processing_export"
+	"github.com/leaq-ru/exporter/row"
+	"github.com/leaq-ru/proto/codegen/go/parser"
 	"github.com/nats-io/stan.go"
-	"github.com/nnqq/scr-exporter/cached_export"
-	"github.com/nnqq/scr-exporter/exporter_bucket"
-	"github.com/nnqq/scr-exporter/file"
-	"github.com/nnqq/scr-exporter/processing_export"
-	"github.com/nnqq/scr-exporter/row"
-	"github.com/nnqq/scr-proto/codegen/go/parser"
 	"github.com/rs/zerolog"
 )
 

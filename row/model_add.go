@@ -2,7 +2,7 @@ package row
 
 import (
 	"context"
-	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"github.com/leaq-ru/proto/codegen/go/parser"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/protobuf/proto"
 	"time"

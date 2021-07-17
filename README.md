@@ -1,1 +1,1 @@
-# scr-exporter
+https://github.com/leaq-ru/about

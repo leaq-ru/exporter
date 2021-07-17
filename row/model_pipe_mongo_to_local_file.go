@@ -3,8 +3,8 @@ package row
 import (
 	"context"
 	"github.com/golang/protobuf/proto"
-	"github.com/nnqq/scr-exporter/csv"
-	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"github.com/leaq-ru/exporter/csv"
+	"github.com/leaq-ru/proto/codegen/go/parser"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/sync/errgroup"
 	"time"

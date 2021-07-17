@@ -1,7 +1,7 @@
 package row
 
 import (
-	"github.com/nnqq/scr-exporter/mongo"
+	"github.com/leaq-ru/exporter/mongo"
 	m "go.mongodb.org/mongo-driver/mongo"
 	"sync"
 )

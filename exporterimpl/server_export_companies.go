@@ -3,12 +3,12 @@ package exporterimpl
 import (
 	"context"
 	"errors"
-	"github.com/nnqq/scr-exporter/cached_export"
-	"github.com/nnqq/scr-exporter/csv"
-	"github.com/nnqq/scr-exporter/safeerr"
-	"github.com/nnqq/scr-proto/codegen/go/exporter"
-	"github.com/nnqq/scr-proto/codegen/go/opts"
-	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"github.com/leaq-ru/exporter/cached_export"
+	"github.com/leaq-ru/exporter/csv"
+	"github.com/leaq-ru/exporter/safeerr"
+	"github.com/leaq-ru/proto/codegen/go/exporter"
+	"github.com/leaq-ru/proto/codegen/go/opts"
+	"github.com/leaq-ru/proto/codegen/go/parser"
 	"time"
 )
 

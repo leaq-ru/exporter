@@ -2,10 +2,10 @@ package exporterimpl
 
 import (
 	"context"
-	"github.com/nnqq/scr-exporter/md"
-	"github.com/nnqq/scr-exporter/pagination"
-	"github.com/nnqq/scr-exporter/safeerr"
-	"github.com/nnqq/scr-proto/codegen/go/exporter"
+	"github.com/leaq-ru/exporter/md"
+	"github.com/leaq-ru/exporter/pagination"
+	"github.com/leaq-ru/exporter/safeerr"
+	"github.com/leaq-ru/proto/codegen/go/exporter"
 	"time"
 )
 

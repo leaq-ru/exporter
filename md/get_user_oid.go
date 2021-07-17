@@ -2,7 +2,7 @@ package md
 
 import (
 	"context"
-	"github.com/nnqq/scr-exporter/safeerr"
+	"github.com/leaq-ru/exporter/safeerr"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

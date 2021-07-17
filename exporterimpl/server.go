@@ -1,12 +1,12 @@
 package exporterimpl
 
 import (
-	"github.com/nnqq/scr-exporter/cached_export"
-	"github.com/nnqq/scr-exporter/consumer"
-	"github.com/nnqq/scr-exporter/exporter_bucket"
-	"github.com/nnqq/scr-exporter/file"
-	"github.com/nnqq/scr-proto/codegen/go/exporter"
-	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"github.com/leaq-ru/exporter/cached_export"
+	"github.com/leaq-ru/exporter/consumer"
+	"github.com/leaq-ru/exporter/exporter_bucket"
+	"github.com/leaq-ru/exporter/file"
+	"github.com/leaq-ru/proto/codegen/go/exporter"
+	"github.com/leaq-ru/proto/codegen/go/parser"
 	"github.com/rs/zerolog"
 )
 

@@ -3,7 +3,7 @@ package csv
 import (
 	"context"
 	"errors"
-	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"github.com/leaq-ru/proto/codegen/go/parser"
 	"golang.org/x/sync/errgroup"
 	"io"
 )

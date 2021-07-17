@@ -5,7 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
-	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"github.com/leaq-ru/proto/codegen/go/parser"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/protobuf/encoding/protojson"
 	"time"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/nnqq/scr-proto/codegen/go/parser"
+	"github.com/leaq-ru/proto/codegen/go/parser"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/protobuf/encoding/protojson"
